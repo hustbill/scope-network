@@ -1,15 +1,19 @@
 package main
 
-import "sync"
+import ("sync"
+	"net/http"
+	"log"
+	"encoding/json"
+)
 
 // Plugin groups the methods a plugin needs
 type Plugin struct {
 	lock       sync.Mutex
 }
 
-type report struct {
-	Plugins []pluginSpec
-}
+//type report struct {
+//	Plugins []pluginSpec
+//}
 
 func (p *Plugin) makeReport() (*report, error) {
 	rpt := &report{
