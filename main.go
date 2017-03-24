@@ -2,20 +2,20 @@ package main
 
 
 import (
-	"encoding/json"
+	//"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
+	//"os/exec"
 	"os/signal"
 	"path/filepath"
-	"strconv"
-	"strings"
-	"sync"
+	//"strconv"
+	//"strings"
+	//"sync"
 	"syscall"
-	"time"
+	//"time"
 )
 
 func setupSocket(socketPath string) (net.Listener, error) {
@@ -32,7 +32,28 @@ func setupSocket(socketPath string) (net.Listener, error) {
 	return listener, nil
 }
 
+func setupSignals(socketPath string) {
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-interrupt
+		os.RemoveAll(filepath.Dir(socketPath))
+		os.Exit(0)
+	}()
+}
+
 
 func main() {
+	const socketPath = "/var/run/scope/plugins/my-plugin/my-plugin.sock"
+	setupSignals(socketPath)
 
+	listener, err := setupSocket(socketPath)
+
+	plugin := &Plugin{}
+	http.HandleFunc("/report", plugin.Report)
+
+	defer func() {
+		listener.Close()
+		os.RemoveAll(filepath.Dir(socketPath))
+	}()
 }
