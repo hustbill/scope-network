@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	trafficControlTablePrefix = "network-control-table-"
+	networkControlTablePrefix = "network-control-table-"
 )
 
 type report struct {
@@ -163,11 +163,11 @@ func (r *Reporter) getContainerNodes() map[string]node {
 			nodes[nodeID] = node{
 				LatestControls: getTrafficNodeControls(timestamp, dead),
 				Latest: map[string]stringEntry{
-					fmt.Sprintf("%s%s", trafficControlTablePrefix, "latency"): {
+					fmt.Sprintf("%s%s", networkControlTablePrefix, "latency"): {
 						Timestamp: timestamp,
 						Value:     latency,
 					},
-					fmt.Sprintf("%s%s", trafficControlTablePrefix, "pktloss"): {
+					fmt.Sprintf("%s%s", networkControlTablePrefix, "pktloss"): {
 						Timestamp: timestamp,
 						Value:     packetLoss,
 					},
@@ -205,7 +205,7 @@ func getTableTemplate() map[string]tableTemplate {
 		"network-control-table": {
 			ID:     "network-control-table",
 			Label:  "Network Control",
-			Prefix: trafficControlTablePrefix,
+			Prefix: networkControlTablePrefix,
 		},
 	}
 }
@@ -243,7 +243,7 @@ func getLatencyControls() []extControl {
 	return []extControl{
 		{
 			control: control{
-				ID:    fmt.Sprintf("%s%s", trafficControlTablePrefix, "slow"),
+				ID:    fmt.Sprintf("%s%s", networkControlTablePrefix, "slow"),
 				Human: "Traffic speed: slow",
 				Icon:  "fa-hourglass-1",
 				Rank:  20,
@@ -254,7 +254,7 @@ func getLatencyControls() []extControl {
 		},
 		{
 			control: control{
-				ID:    fmt.Sprintf("%s%s", trafficControlTablePrefix, "medium"),
+				ID:    fmt.Sprintf("%s%s", networkControlTablePrefix, "medium"),
 				Human: "Traffic speed: medium",
 				Icon:  "fa-hourglass-2",
 				Rank:  21,
@@ -265,7 +265,7 @@ func getLatencyControls() []extControl {
 		},
 		{
 			control: control{
-				ID:    fmt.Sprintf("%s%s", trafficControlTablePrefix, "fast"),
+				ID:    fmt.Sprintf("%s%s", networkControlTablePrefix, "fast"),
 				Human: "Traffic speed: fast",
 				Icon:  "fa-hourglass-3",
 				Rank:  22,
@@ -281,7 +281,7 @@ func getPacketLossControls() []extControl {
 	return []extControl{
 		{
 			control: control{
-				ID:    fmt.Sprintf("%s%s", trafficControlTablePrefix, "pkt-drop-low"),
+				ID:    fmt.Sprintf("%s%s", networkControlTablePrefix, "pkt-drop-low"),
 				Human: "Packet drop: low",
 				Icon:  "fa-cut",
 				Rank:  23,
@@ -297,7 +297,7 @@ func getGeneralControls() []extControl {
 	return []extControl{
 		{
 			control: control{
-				ID:    fmt.Sprintf("%s%s", trafficControlTablePrefix, "clear"),
+				ID:    fmt.Sprintf("%s%s", networkControlTablePrefix, "clear"),
 				Human: "Clear traffic control settings",
 				Icon:  "fa-times-circle",
 				Rank:  24,
