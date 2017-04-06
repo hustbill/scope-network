@@ -1,7 +1,7 @@
 package main
 
 import (
-"sync"
+	"sync"
 )
 
 // State is the container internal state

@@ -1,15 +1,15 @@
 package main
 
-
 import (
-"encoding/json"
-"fmt"
-"strings"
-"time"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	trafficControlTablePrefix = "traffic-control-table-"
+	trafficControlTablePrefix = "network-control-table-"
 )
 
 type report struct {
@@ -87,6 +87,7 @@ func NewReporter(store *Store) *Reporter {
 
 // RawReport returns a report
 func (r *Reporter) RawReport() ([]byte, error) {
+	log.Debugf("enter RawReport")  // billzhang 2017-04-04
 	rpt := &report{
 		Container: topology{
 			Nodes:             r.getContainerNodes(),
@@ -96,8 +97,8 @@ func (r *Reporter) RawReport() ([]byte, error) {
 		},
 		Plugins: []pluginSpec{
 			{
-				ID:          "traffic-control",
-				Label:       "Traffic control",
+				ID:          "network-control",
+				Label:       "Network control",
 				Description: "Adds traffic controls to the running Docker containers",
 				Interfaces:  []string{"reporter", "controller"},
 				APIVersion:  "1",
@@ -113,6 +114,8 @@ func (r *Reporter) RawReport() ([]byte, error) {
 
 // GetHandler returns the function performing the action specified by controlID
 func (r *Reporter) GetHandler(nodeID, controlID string) (func() error, error) {
+	log.Debugf("enter GetHandler for nodeID %d", nodeID)  // billzhang 2017-04-04
+	log.Debugf("enter GetHandler for controlID %s", controlID)  // billzhang 2017-04-04
 	containerID, err := nodeIDToContainerID(nodeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get container ID from node ID %q: %v", nodeID, err)
@@ -140,19 +143,21 @@ func (r *Reporter) GetHandler(nodeID, controlID string) (func() error, error) {
 // created, destroyed - don't create any node
 // running, not running - create node with controls
 func (r *Reporter) getContainerNodes() map[string]node {
+	log.Debugf("enter getContainerNodes")  // billzhang 2017-04-04
 	nodes := map[string]node{}
 	timestamp := time.Now()
 	r.store.ForEach(func(containerID string, container Container) {
 		dead := false
 		switch container.State {
 		case Created, Destroyed:
-		// do nothing, to prevent adding a stale node
-		// to a report
+			// do nothing, to prevent adding a stale node
+			// to a report
 		case Stopped:
 			dead = true
 			fallthrough
 		case Running:
 			nodeID := containerIDToNodeID(containerID)
+			log.Debugf("getContainerNode, nodeID =%d", nodeID)
 			latency, _ := getLatency(container.PID)
 			packetLoss, _ := getPacketLoss(container.PID)
 			nodes[nodeID] = node{
@@ -174,17 +179,18 @@ func (r *Reporter) getContainerNodes() map[string]node {
 }
 
 func getMetadataTemplate() map[string]metadataTemplate {
+	log.Debugf("enter getMetadataTemplate")  // billzhang 2017-04-04
 	return map[string]metadataTemplate{
-		"traffic-control-latency": {
-			ID:       "traffic-control-latency",
+		"network-control-latency": {
+			ID:       "network-control-latency",
 			Label:    "Latency",
 			Truncate: 0,
 			Datatype: "",
 			Priority: 13.5,
 			From:     "latest",
 		},
-		"traffic-control-pktloss": {
-			ID:       "traffic-control-pktloss",
+		"network-control-pktloss": {
+			ID:       "network-control-pktloss",
 			Label:    "Packet Loss",
 			Truncate: 0,
 			Datatype: "",
@@ -196,15 +202,16 @@ func getMetadataTemplate() map[string]metadataTemplate {
 
 func getTableTemplate() map[string]tableTemplate {
 	return map[string]tableTemplate{
-		"traffic-control-table": {
-			ID:     "traffic-control-table",
-			Label:  "Traffic Control",
+		"network-control-table": {
+			ID:     "network-control-table",
+			Label:  "Network Control",
 			Prefix: trafficControlTablePrefix,
 		},
 	}
 }
 
 func getTrafficNodeControls(timestamp time.Time, dead bool) map[string]controlEntry {
+	log.Debugf("enter getTrafficNodeControls")  // billzhang 2017-04-04
 	controls := map[string]controlEntry{}
 	entry := controlEntry{
 		Timestamp: timestamp,
@@ -232,6 +239,7 @@ type extControl struct {
 }
 
 func getLatencyControls() []extControl {
+	log.Debugf("enter getLatencyControls")  // billzhang 2017-04-04
 	return []extControl{
 		{
 			control: control{

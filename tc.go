@@ -12,6 +12,7 @@ import (
 
 // applyTrafficControlRules set the network policies
 func applyTrafficControlRules(pid int, rules []string) (netNSID string, err error) {
+	log.Printf("enter applyTrafficControlRules for pid %d", pid)  // billzhang 2017-04-04
 	cmds := [][]string{
 		strings.Fields("tc qdisc replace dev eth0 root handle 1: netem"),
 	}
@@ -20,6 +21,8 @@ func applyTrafficControlRules(pid int, rules []string) (netNSID string, err erro
 	cmds = append(cmds, cmd)
 
 	netNS := fmt.Sprintf("/proc/%d/ns/net", pid)
+	log.Printf("/proc/%d/ns/net", pid)  // billzhang 2017-04-04
+
 	err = ns.WithNetNSPath(netNS, func(hostNS ns.NetNS) error {
 		for _, cmd := range cmds {
 			if output, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput(); err != nil {
@@ -32,6 +35,7 @@ func applyTrafficControlRules(pid int, rules []string) (netNSID string, err erro
 	if err != nil {
 		return "", fmt.Errorf("failed to perform traffic control: %v", err)
 	}
+	log.Printf("call getNSID for netNS %s", netNS)  // billzhang 2017-04-04
 	netNSID, err = getNSID(netNS)
 
 	if err != nil {
@@ -98,6 +102,7 @@ func ApplyPacketLoss(pid int, packetLoss string) error {
 
 // ClearTrafficControlSettings clear all parameters of the qdisc with tc
 func ClearTrafficControlSettings(pid int) error {
+	log.Printf("enter ClearTrafficControlSettings for pid %d", pid)  // billzhang 2017-04-04
 	cmds := [][]string{
 		strings.Fields("tc qdisc replace dev eth0 root handle 1: netem"),
 	}
@@ -115,6 +120,7 @@ func ClearTrafficControlSettings(pid int) error {
 		return fmt.Errorf("failed to perform traffic control: %v", err)
 	}
 	// clear cached parameters
+	log.Printf("call getNSID for netNS %s", netNS)  // billzhang 2017-04-04
 	netNSID, err := getNSID(netNS)
 	if err != nil {
 		log.Error(netNSID)
@@ -125,6 +131,7 @@ func ClearTrafficControlSettings(pid int) error {
 }
 
 func getLatency(pid int) (string, error) {
+	log.Printf("enter getLatency for PID %d", pid)  // billzhang 2017-04-04
 	var status *TrafficControlStatus
 	var err error
 	if status, err = getStatus(pid); err != nil {
@@ -136,6 +143,7 @@ func getLatency(pid int) (string, error) {
 }
 
 func getPacketLoss(pid int) (string, error) {
+	log.Printf("enter getPacketLoss for PID %d", pid)  // billzhang 2017-04-04
 	var status *TrafficControlStatus
 	var err error
 	if status, err = getStatus(pid); err != nil {
@@ -147,7 +155,10 @@ func getPacketLoss(pid int) (string, error) {
 }
 
 func getStatus(pid int) (*TrafficControlStatus, error) {
+	log.Printf("enter getStatus for PID %d", pid)  // billzhang 2017-04-04
 	netNS := fmt.Sprintf("/proc/%d/ns/net", pid)
+	log.Printf("/proc/%d/ns/net", pid)
+	log.Printf("In getStatus, call getNSID for netNS %s", netNS)  // billzhang 2017-04-04
 	netNSID, err := getNSID(netNS)
 	if err != nil {
 		log.Error(netNSID)
@@ -156,18 +167,24 @@ func getStatus(pid int) (*TrafficControlStatus, error) {
 	if status, ok := trafficControlStatusCache[netNSID]; ok {
 		return status, nil
 	}
-	cmd := strings.Fields("tc qdisc show dev eth0")
+
+	//cmd := strings.Fields("tc qdisc show dev eth0")
+	cmd := strings.Fields("tc qdisc show dev enp2s0f1")  // billzhang 2017-04-04
 	var output string
+	log.Printf("start exec command: tc qdisc show dev enp2s0f1, netNS = %s", netNS)  // billzhang 2017-04-04
 	err = ns.WithNetNSPath(netNS, func(hostNS ns.NetNS) error {
 		cmdOut, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
 		if err != nil {
 			log.Error(string(cmdOut))
 			output = ""
-			return fmt.Errorf("failed to execute command: tc qdisc show dev eth0: %v", err)
+			//return fmt.Errorf("failed to execute command: tc qdisc show dev eth0: %v", err)
+			log.Errorf("failed to execute command: tc qdisc show dev enp2s0f1: %v", err)  // billzhang 2017-04-04
+			return fmt.Errorf("failed to execute command: tc qdisc show dev enp2s0f1: %v", err)  // billzhang 2017-04-04
 		}
 		output = string(cmdOut)
 		return nil
 	})
+	log.Printf("end exec command: tc qdisc show dev enp2s0f1")  // billzhang 2017-04-04
 	// cache parameters
 	trafficControlStatusCache[netNSID] = &TrafficControlStatus{
 		latency:    parseLatency(output),
@@ -185,6 +202,7 @@ func parsePacketLoss(statusString string) string {
 	return parseAttribute(statusString, "loss")
 }
 func parseAttribute(statusString string, attribute string) string {
+	log.Printf("enter parseAttribute for statusString %s", statusString)  // billzhang 2017-04-04
 	statusStringSplited := strings.Fields(statusString)
 	for i, s := range statusStringSplited {
 		if s == attribute {
@@ -198,9 +216,12 @@ func parseAttribute(statusString string, attribute string) string {
 }
 
 func getNSID(nsPath string) (string, error) {
+	log.Printf("enter getNSID for nsPath %s", nsPath)  // billzhang 2017-04-04
 	nsID, err := os.Readlink(nsPath)
 	if err != nil {
+		log.Errorf("failed read \"%s\": %v", nsPath, err)
 		return "", fmt.Errorf("failed read \"%s\": %v", nsPath, err)
 	}
+	log.Printf("exit getNSID for nsID[5 : len(nsID)-1] %s", nsID[5 : len(nsID)-1])  // billzhang 2017-04-04
 	return nsID[5 : len(nsID)-1], nil
 }
