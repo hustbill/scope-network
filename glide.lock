@@ -1,5 +1,5 @@
-hash: bd9336b880a82c02966079471881dae0531b073064ce86a756840c0beb1c52bc
-updated: 2016-09-27T14:59:05.607799553+02:00
+hash: 2775922ce1371c02b479b699a4a4ee2d1954dbeef51b8095fca68b4447271be3
+updated: 2017-04-10T13:35:46.978200244-07:00
 imports:
 - name: github.com/containernetworking/cni
   version: 5c3c17164270150467498a32c71436c7cd5501be
@@ -32,8 +32,24 @@ imports:
   version: 30ceb1a86b568e935e73aaf0a4df18be5c8f945d
 - name: github.com/hashicorp/go-cleanhttp
   version: ad28ea4487f05916463e2423a55166280e8254b5
+- name: github.com/influxdata/influxdb
+  version: 1bcf3ae74c6b9c4897dab68d513d056277eb24f7
+  subpackages:
+  - client
+  - models
+  - pkg/escape
+- name: github.com/mattn/go-colorable
+  version: ded68f7a9561c023e790de24279db7ebf473ea80
+- name: github.com/mattn/go-isatty
+  version: fc9e8d8ef48496124e79ae0df75490096eccf6fe
+- name: github.com/mattn/go-runewidth
+  version: 14207d285c6c197daabb5c9793d63e7af9ab2d50
+- name: github.com/mgutz/ansi
+  version: 9520e82c474b0a04dd04f8a40959027271bab992
 - name: github.com/Microsoft/go-winio
   version: ce2922f643c8fd76b46cadc7f404a06282678b34
+- name: github.com/olekukonko/tablewriter
+  version: febf2d34b54a69ce7530036c7503b1c9fbfdf0bb
 - name: github.com/opencontainers/runc
   version: 2940d2e2e9365b4b3fec8ae24822435195f56b61
   subpackages:
@@ -41,6 +57,10 @@ imports:
   - libcontainer/user
 - name: github.com/Sirupsen/logrus
   version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
+- name: github.com/weaveworks/docker
+  version: 5761d8b342f0d6352f591968fbe20b4298c4de22
+  subpackages:
+  - pkg/mflag
 - name: golang.org/x/net
   version: 6a513affb38dc9788b449d59ffed099b8de18fa0
   subpackages:
@@ -51,4 +71,10 @@ imports:
   subpackages:
   - unix
   - windows
+- name: golang.org/x/tools
+  version: ef3dcd5937c94da5c25df3f3a5d8356d778af8e4
+  subpackages:
+  - cover
+- name: gopkg.in/yaml.v2
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports: []

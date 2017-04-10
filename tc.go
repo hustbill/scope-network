@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,7 +9,14 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/containernetworking/cni/pkg/ns"
+	"github.com/influxdata/influxdb/client"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 )
+
+const db = "ican"
+var command = "select * from p2prxbyte"
 
 // applyTrafficControlRules set the network policies
 func applyTrafficControlRules(pid int, rules []string) (netNSID string, err error) {
@@ -154,12 +162,45 @@ func getPacketLoss(pid int) (string, error) {
 	return status.packetLoss, nil
 }
 
+func queryInfluxDB(db string, command string) {
+	log.Info("queryInfluxDB")
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var data client.Response
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(data)
+	}))
+	defer ts.Close()
+
+	u, _ := url.Parse(ts.URL)
+
+	u.Host = "localhost:8086"  // set to InfluxDB default port : 8086
+
+	config := client.Config{URL: *u}
+	c, err := client.NewClient(config)
+	if err != nil {
+		log.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
+	}
+
+	query := client.Query{}
+	query.Database = db
+	query.Command = command
+
+
+	res, err := c.Query(query)
+	log.Info("response: ", res)
+
+	if err != nil {
+		log.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
+	}
+}
+
+
 func getStatus(pid int) (*TrafficControlStatus, error) {
-	log.Printf("enter getStatus for PID %d", pid)  // billzhang 2017-04-04
+
 	netNS := fmt.Sprintf("/proc/%d/ns/net", pid)
-	log.Printf("/proc/%d/ns/net", pid)
-	log.Printf("In getStatus, call getNSID for netNS %s", netNS)  // billzhang 2017-04-04
+
 	netNSID, err := getNSID(netNS)
+	log.Printf("getStatus for PID %d, netNSID %s", pid, netNSID)  // billzhang 2017-04-04
 	if err != nil {
 		log.Error(netNSID)
 		return nil, fmt.Errorf("failed to get network namespace ID: %v", err)
@@ -168,29 +209,35 @@ func getStatus(pid int) (*TrafficControlStatus, error) {
 		return status, nil
 	}
 
+
 	//cmd := strings.Fields("tc qdisc show dev eth0")
 	cmd := strings.Fields("tc qdisc show dev enp2s0f1")  // billzhang 2017-04-04
 	var output string
-	log.Printf("start exec command: tc qdisc show dev enp2s0f1, netNS = %s", netNS)  // billzhang 2017-04-04
+
+	queryInfluxDB(db, command)
+
 	err = ns.WithNetNSPath(netNS, func(hostNS ns.NetNS) error {
 		cmdOut, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
 		if err != nil {
 			log.Error(string(cmdOut))
 			output = ""
 			//return fmt.Errorf("failed to execute command: tc qdisc show dev eth0: %v", err)
-			log.Errorf("failed to execute command: tc qdisc show dev enp2s0f1: %v", err)  // billzhang 2017-04-04
 			return fmt.Errorf("failed to execute command: tc qdisc show dev enp2s0f1: %v", err)  // billzhang 2017-04-04
 		}
 		output = string(cmdOut)
+		log.Printf("start exec command, output = %s", output)  // billzhang 2017-04-09
 		return nil
 	})
-	log.Printf("end exec command: tc qdisc show dev enp2s0f1")  // billzhang 2017-04-04
+
 	// cache parameters
 	trafficControlStatusCache[netNSID] = &TrafficControlStatus{
 		latency:    parseLatency(output),
 		packetLoss: parsePacketLoss(output),
 	}
 	status, _ := trafficControlStatusCache[netNSID]
+
+	status.latency = "5000"
+	status.packetLoss = "1"
 	return status, err
 }
 
@@ -202,7 +249,7 @@ func parsePacketLoss(statusString string) string {
 	return parseAttribute(statusString, "loss")
 }
 func parseAttribute(statusString string, attribute string) string {
-	log.Printf("enter parseAttribute for statusString %s", statusString)  // billzhang 2017-04-04
+	log.Debugf("enter parseAttribute for statusString %s", statusString)  // billzhang 2017-04-04
 	statusStringSplited := strings.Fields(statusString)
 	for i, s := range statusStringSplited {
 		if s == attribute {
@@ -216,12 +263,12 @@ func parseAttribute(statusString string, attribute string) string {
 }
 
 func getNSID(nsPath string) (string, error) {
-	log.Printf("enter getNSID for nsPath %s", nsPath)  // billzhang 2017-04-04
+	log.Debugf("enter getNSID for nsPath %s", nsPath)  // billzhang 2017-04-04
 	nsID, err := os.Readlink(nsPath)
 	if err != nil {
 		log.Errorf("failed read \"%s\": %v", nsPath, err)
 		return "", fmt.Errorf("failed read \"%s\": %v", nsPath, err)
 	}
-	log.Printf("exit getNSID for nsID[5 : len(nsID)-1] %s", nsID[5 : len(nsID)-1])  // billzhang 2017-04-04
+	log.Debugf("exit getNSID for nsID[5 : len(nsID)-1] %s", nsID[5 : len(nsID)-1])  // billzhang 2017-04-04
 	return nsID[5 : len(nsID)-1], nil
 }

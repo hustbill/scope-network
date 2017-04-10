@@ -7,3 +7,5 @@ import:
   subpackages:
   - pkg/ns
 - package: github.com/fsouza/go-dockerclient
+- package: github.com/influxdata/influxdb
+  version: ^1.2.2
