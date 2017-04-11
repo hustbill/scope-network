@@ -158,16 +158,21 @@ func (r *Reporter) getContainerNodes() map[string]node {
 		case Running:
 			nodeID := containerIDToNodeID(containerID)
 			log.Debugf("getContainerNode, nodeID =%d", nodeID)
+			pod, _ := getPod(container.PID)
 			latency, _ := getLatency(container.PID)
 			packetLoss, _ := getPacketLoss(container.PID)
 			nodes[nodeID] = node{
 				LatestControls: getTrafficNodeControls(timestamp, dead),
 				Latest: map[string]stringEntry{
-					fmt.Sprintf("%s%s", networkControlTablePrefix, "latency"): {
+					fmt.Sprintf("%s%s", networkControlTablePrefix, "dst-pod"): {
+						Timestamp: timestamp,
+						Value:     pod,
+					},
+					fmt.Sprintf("%s%s", networkControlTablePrefix, "bandwidth"): {
 						Timestamp: timestamp,
 						Value:     latency,
 					},
-					fmt.Sprintf("%s%s", networkControlTablePrefix, "pktloss"): {
+					fmt.Sprintf("%s%s", networkControlTablePrefix, "packet"): {
 						Timestamp: timestamp,
 						Value:     packetLoss,
 					},

@@ -53,6 +53,7 @@ type Plugin struct {
 
 // TrafficControlStatus keeps track of parameters status
 type TrafficControlStatus struct {
+	pod	   string
 	latency    string
 	packetLoss string
 }
@@ -84,6 +85,7 @@ func (tcs *TrafficControlStatus) SetPacketLoss(packetLoss string) {
 // TrafficControlStatusInit initializes with the convention that empty values are '-'
 func TrafficControlStatusInit() *TrafficControlStatus {
 	return &TrafficControlStatus{
+		pod:	"-",
 		latency:    "-",
 		packetLoss: "-",
 	}

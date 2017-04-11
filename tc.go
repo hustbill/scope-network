@@ -13,10 +13,21 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 )
 
 const db = "ican"
-var command = "select * from p2prxbyte"
+
+// resp is a container for the raw InfluxDB responses.
+//type resp struct {
+//	Results []struct {
+//		Series []struct {
+//			Columns []string        `json:"columns"`
+//			Values  [][]interface{} `json:"values"`
+//		} `json:"series"`
+//	} `json:"results"`
+//}
+
 
 // applyTrafficControlRules set the network policies
 func applyTrafficControlRules(pid int, rules []string) (netNSID string, err error) {
@@ -138,6 +149,18 @@ func ClearTrafficControlSettings(pid int) error {
 	return nil
 }
 
+func getPod(pid int) (string, error) {
+	log.Printf("enter getPod for PID %d", pid)  // billzhang 2017-04-04
+	var status *TrafficControlStatus
+	var err error
+	if status, err = getStatus(pid); err != nil {
+		return "-", err
+	} else if status == nil {
+		return "-", fmt.Errorf("status for PID %d does not exist", pid)
+	}
+	return status.pod, nil
+}
+
 func getLatency(pid int) (string, error) {
 	log.Printf("enter getLatency for PID %d", pid)  // billzhang 2017-04-04
 	var status *TrafficControlStatus
@@ -162,7 +185,7 @@ func getPacketLoss(pid int) (string, error) {
 	return status.packetLoss, nil
 }
 
-func queryInfluxDB(db string, command string) {
+func queryInfluxDB(db string, command string) (*client.Response, error) {
 	log.Info("queryInfluxDB")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var data client.Response
@@ -187,15 +210,17 @@ func queryInfluxDB(db string, command string) {
 
 
 	res, err := c.Query(query)
-	log.Info("response: ", res)
 
 	if err != nil {
 		log.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
 	}
+	return res, nil;
 }
 
 
 func getStatus(pid int) (*TrafficControlStatus, error) {
+	var cmd_bandwidth = "select * from p2prxbyte"
+	var cmd_packet = "select * from p2prxpkt"
 
 	netNS := fmt.Sprintf("/proc/%d/ns/net", pid)
 
@@ -209,57 +234,96 @@ func getStatus(pid int) (*TrafficControlStatus, error) {
 		return status, nil
 	}
 
+	// query bandwidth
+	output_bandWidth, err := queryInfluxDB(db, cmd_bandwidth)
 
-	//cmd := strings.Fields("tc qdisc show dev eth0")
-	cmd := strings.Fields("tc qdisc show dev enp2s0f1")  // billzhang 2017-04-04
-	var output string
+	// query packet
+	// cmd_packet
+	output_packet, err := queryInfluxDB(db, cmd_packet)
 
-	queryInfluxDB(db, command)
-
-	err = ns.WithNetNSPath(netNS, func(hostNS ns.NetNS) error {
-		cmdOut, err := exec.Command(cmd[0], cmd[1:]...).CombinedOutput()
-		if err != nil {
-			log.Error(string(cmdOut))
-			output = ""
-			//return fmt.Errorf("failed to execute command: tc qdisc show dev eth0: %v", err)
-			return fmt.Errorf("failed to execute command: tc qdisc show dev enp2s0f1: %v", err)  // billzhang 2017-04-04
-		}
-		output = string(cmdOut)
-		log.Printf("start exec command, output = %s", output)  // billzhang 2017-04-09
-		return nil
-	})
+	if err != nil {
+		log.Error(netNSID)
+		return nil, fmt.Errorf("failed to get data from InfluxDB: %v", err)
+	}
 
 	// cache parameters
 	trafficControlStatusCache[netNSID] = &TrafficControlStatus{
-		latency:    parseLatency(output),
-		packetLoss: parsePacketLoss(output),
+		pod:        parsePod(output_bandWidth),
+		latency:    parseBandwidth(output_bandWidth),
+		packetLoss: parsePacket(output_packet),
 	}
 	status, _ := trafficControlStatusCache[netNSID]
 
-	status.latency = "5000"
-	status.packetLoss = "1"
 	return status, err
 }
 
-func parseLatency(statusString string) string {
-	return parseAttribute(statusString, "delay")
+func parsePod(res *client.Response) string {
+	return parseAttribute(res, "pod")
 }
 
-func parsePacketLoss(statusString string) string {
-	return parseAttribute(statusString, "loss")
+func parseBandwidth(res *client.Response) string {
+	return parseAttribute(res, "bandwidth")
 }
-func parseAttribute(statusString string, attribute string) string {
-	log.Debugf("enter parseAttribute for statusString %s", statusString)  // billzhang 2017-04-04
-	statusStringSplited := strings.Fields(statusString)
-	for i, s := range statusStringSplited {
-		if s == attribute {
-			if i < len(statusStringSplited)-1 {
-				return strings.Trim(statusStringSplited[i+1], "\n")
-			}
+
+func parsePacket(res *client.Response) string {
+	return parseAttribute(res, "packet")
+}
+
+
+func parseAttribute(resp *client.Response, attribute string) (string) {
+	log.Debugf("enter parseAttribute for statusString")
+	log.Info(resp)  // billzhang 2017-04-04
+
+	//res, err := resp.Results[0].Series[0].Values[0][1].(json.Number).Float64()
+
+	var myData [][]interface{} = make([][]interface{}, len(resp.Results[0].Series[0].Values))
+	for i, d := range resp.Results[0].Series[0].Values {
+		myData[i] = d
+	}
+
+	// row : p2prxpkt,
+	// host=10.145.240.148,
+	// spod_name=user-468431046-6wr62,
+	// spod_namespace=user-468431046-6wr62,
+	// dpod_name=weave-net-8sww0,
+	// dpod_namespace=kube-system,
+	// src=10.32.0.14,
+	// dst=10.145.240.148
+	// value=41
+
+	log.Printf("Result :")
+	fmt.Println("", myData[0]) //first element in slice
+	log.Println("---------------------------")
+	fmt.Println("time: ", myData[0][0])
+	fmt.Println("dpod_name: ", myData[0][1])
+	fmt.Println("dpod_namespace: ", myData[0][2])
+	fmt.Println("dst: ", myData[0][3])
+	fmt.Println("host: ", myData[0][4])
+	fmt.Println("spod_name: ", myData[0][5])
+	fmt.Println("spod_namespace: ", myData[0][6])
+	fmt.Println("src: ", myData[0][7])
+	fmt.Println("value: ", myData[0][8])
+
+	if (attribute == "pod") {
+		pod, err := resp.Results[0].Series[0].Values[0][1].(string)
+		if err == false {
 			return "-"
 		}
+		log.Printf("spod_name : %s ", pod)
+		return pod
 	}
-	return "-"
+
+
+	val, err := resp.Results[0].Series[0].Values[0][8].(json.Number).Int64()
+	str := strconv.FormatInt(val, 10)
+
+	if err != nil {
+		log.Errorf("failed read data from InfluxDB: %v", err)
+		return "-"
+	}
+
+	return str
+
 }
 
 func getNSID(nsPath string) (string, error) {
