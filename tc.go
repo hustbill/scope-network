@@ -266,7 +266,7 @@ func queryInfluxDB(db string, command string) (*client.Response, error) {
 	config := client.Config{URL: *u}
 	c, err := client.NewClient(config)
 	if err != nil {
-		log.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
+		log.Fatalf("unexpected error for client.NewClient.  expected %v, actual %v", nil, err)
 	}
 
 	query := client.Query{}
