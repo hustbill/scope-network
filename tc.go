@@ -278,7 +278,7 @@ func queryInfluxDB(db string, command string) (*client.Response, error) {
 
 	if err != nil {
 		log.Info(res)
-		log.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
+		log.Printf("unexpected error.  expected %v, actual %v", nil, err)
 
 	}
 	return res, nil;
@@ -423,7 +423,7 @@ func parseAttribute(resp *client.Response) ([]string) {
 	//fmt.Println("spod_namespace: ", myData[0][6])
 	//fmt.Println("src: ", myData[0][7])
 	//fmt.Println("value: ", myData[0][8])
-	if (len(resp.Results) > 1) {
+	if (resp != nil) {
 		log.Printf("Inside, len(resp.Results) = %d ", len(resp.Results))
 		log.Info(resp.Results[0])
 
@@ -449,7 +449,7 @@ func parseAttribute(resp *client.Response) ([]string) {
 		}
 
 	} else {
-		log.Printf("len(resp.Results) = %d ", len(resp.Results))
+		log.Printf("resp is :  ", resp)
 	}
 	return result
 
