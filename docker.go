@@ -14,6 +14,8 @@ type DockerClient struct {
 	client *docker.Client
 }
 
+
+
 // NewDockerClient instantiates a new DockerClient
 func NewDockerClient(store *Store) (*DockerClient, error) {
 	dc, err := docker.NewClient("unix:///var/run/docker.sock")

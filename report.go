@@ -157,10 +157,10 @@ func (r *Reporter) getContainerNodes() map[string]node {
 			fallthrough
 		case Running:
 			nodeID := containerIDToNodeID(containerID)
-			log.Debugf("getContainerNode, nodeID =%d", nodeID)
-			pod, _ := getPod(container.PID)
-			latency, _ := getLatency(container.PID)
-			packetLoss, _ := getPacketLoss(container.PID)
+			pod, _ := getPod(containerID)
+			log.Info("getContainerNode by Pod: ", pod)
+			latency, _ := getLatencyByPod(pod)
+			packetLoss, _ := getPacketLossByPod(pod)
 			nodes[nodeID] = node{
 				LatestControls: getTrafficNodeControls(timestamp, dead),
 				Latest: map[string]stringEntry{
