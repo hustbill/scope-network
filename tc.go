@@ -277,7 +277,9 @@ func queryInfluxDB(db string, command string) (*client.Response, error) {
 	res, err := c.Query(query)
 
 	if err != nil {
+		log.Info(res)
 		log.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
+
 	}
 	return res, nil;
 }
