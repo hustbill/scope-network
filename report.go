@@ -99,7 +99,7 @@ func (r *Reporter) RawReport() ([]byte, error) {
 			{
 				ID:          "network-control",
 				Label:       "Network control",
-				Description: "Adds traffic controls to the running Docker containers",
+				Description: "Adds Network controls to the running Docker containers",
 				Interfaces:  []string{"reporter", "controller"},
 				APIVersion:  "1",
 			},
