@@ -1,12 +1,12 @@
 # Completed List
-
+1. select data from p2prxbyte  and p2prxpkt with filter
 
 
 # To Do List
-1. select data from p2prxbyte  and p2prxpkt with filter
 2. Event Alert
 3. show in line ( packet, flow)
-
+4. Bibo line using Cytoscape.js
+5. live demo with influxdb
 
 
 # Others

@@ -36,7 +36,7 @@ type metadataTemplate struct {
 	Truncate int     `json:"truncate,omitempty"` // If > 0, truncate the value to this length.
 	Datatype string  `json:"dataType,omitempty"`
 	Priority float64 `json:"priority,omitempty"`
-	From     string  `json:"from,omitempty"` // Defines how to get the value from a report node
+	From     string  `json:"from,omitempty"`     // Defines how to get the value from a report node
 }
 
 type node struct {
@@ -144,37 +144,45 @@ func (r *Reporter) GetHandler(nodeID, controlID string) (func() error, error) {
 // running, not running - create node with controls
 func (r *Reporter) getContainerNodes() map[string]node {
 	log.Debugf("enter getContainerNodes")  // billzhang 2017-04-04
+	var status *TrafficControlStatus
+	var err error
 	nodes := map[string]node{}
 	timestamp := time.Now()
 	r.store.ForEach(func(containerID string, container Container) {
 		dead := false
 		switch container.State {
 		case Created, Destroyed:
-			// do nothing, to prevent adding a stale node
-			// to a report
+		// do nothing, to prevent adding a stale node
+		// to a report
 		case Stopped:
 			dead = true
 			fallthrough
 		case Running:
 			nodeID := containerIDToNodeID(containerID)
-			pod, _ := getPod(containerID)
-			log.Info("getContainerNode by Pod: ", pod)
-			latency, _ := getLatencyByPod(pod)
-			packetLoss, _ := getPacketLossByPod(pod)
+			spod, _ := getPod(containerID)
+			log.Debugf("getStatusByPod by Pod: ", spod)
+			if status, err = getStatusByPod(spod); err != nil {
+				if err != nil {
+					log.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
+				}
+			} else if status == nil {
+				fmt.Errorf("status for pod %s does not exist", spod)
+			}
+
 			nodes[nodeID] = node{
 				LatestControls: getTrafficNodeControls(timestamp, dead),
 				Latest: map[string]stringEntry{
 					fmt.Sprintf("%s%s", networkControlTablePrefix, "dst-pod"): {
 						Timestamp: timestamp,
-						Value:     pod,
+						Value:     status.dpod,
 					},
 					fmt.Sprintf("%s%s", networkControlTablePrefix, "bandwidth"): {
 						Timestamp: timestamp,
-						Value:     latency,
+						Value:     status.latency,
 					},
 					fmt.Sprintf("%s%s", networkControlTablePrefix, "packet"): {
 						Timestamp: timestamp,
-						Value:     packetLoss,
+						Value:     status.packetLoss,
 					},
 				},
 			}

@@ -141,6 +141,7 @@ func ClearTrafficControlSettings(pid int) error {
 }
 
 func getPod(containerID string) (string, error) {
+	log.Debugf("get Pod name by containerID using fsouza/go-dockerclient  %s",containerID)  // billzhang 2017-04-12
 
 	dc, err := dockerClient.NewClient("unix:///var/run/docker.sock")
 	if err != nil {
@@ -151,8 +152,7 @@ func getPod(containerID string) (string, error) {
 	if err != nil {
 		fmt.Errorf("failed to inspect container with context: %v", err)
 	}
-
-	log.Info(container.Name)
+	log.Debugf("container.Name : ", container.Name)
 
 	pod, err := parsePodName(container.Name); // user-468431046-ktrt4
 	if err != nil {
@@ -167,6 +167,7 @@ func getPod(containerID string) (string, error) {
 // If we are unable to parse the name, an error is returned.
 // https://github.com/kubernetes/kubernetes/blob/cda109d22480bc6dea3c06cef21bd4c4fca6fca2/pkg/kubelet/dockertools/docker.go
 func parsePodName(name string) (podName string, err error) {
+	log.Debugf("parse Pod full name from %s", name)  // billzhang 2017-04-12
 	// For some reason docker appears to be appending '/' to names.
 	// If it's there, strip it.
 	var containerNamePrefix = "k8s"
@@ -200,7 +201,7 @@ func parsePodName(name string) (podName string, err error) {
 }
 
 func getLatencyByPod(pod string) (string, error) {
-	log.Printf("enter getLatency for pod %d", pod)  // billzhang 2017-04-04
+	log.Debugf("enter getLatency for pod %s", pod)  // billzhang 2017-04-04
 	var status *TrafficControlStatus
 	var err error
 	if status, err = getStatusByPod(pod); err != nil {
@@ -212,7 +213,7 @@ func getLatencyByPod(pod string) (string, error) {
 }
 
 func getPacketLossByPod(pod string) (string, error) {
-	log.Printf("enter getPacketLoss for pod %d", pod)  // billzhang 2017-04-04
+	log.Debugf("enter getPacketLoss for pod %s", pod)  // billzhang 2017-04-04
 	var status *TrafficControlStatus
 	var err error
 	if status, err = getStatusByPod(pod); err != nil {
@@ -224,7 +225,7 @@ func getPacketLossByPod(pod string) (string, error) {
 }
 
 func getLatency(pid int) (string, error) {
-	log.Printf("enter getLatency for PID %d", pid)  // billzhang 2017-04-04
+	log.Debugf("enter getLatency for PID %d", pid)  // billzhang 2017-04-04
 	var status *TrafficControlStatus
 	var err error
 	if status, err = getStatus(pid); err != nil {
@@ -236,7 +237,7 @@ func getLatency(pid int) (string, error) {
 }
 
 func getPacketLoss(pid int) (string, error) {
-	log.Printf("enter getPacketLoss for PID %d", pid)  // billzhang 2017-04-04
+	log.Debugf("enter getPacketLoss for PID %d", pid)  // billzhang 2017-04-04
 	var status *TrafficControlStatus
 	var err error
 	if status, err = getStatus(pid); err != nil {
@@ -249,7 +250,7 @@ func getPacketLoss(pid int) (string, error) {
 
 
 func queryInfluxDB(db string, command string) (*client.Response, error) {
-	log.Info("queryInfluxDB")
+	log.Printf("queryInfluxDB")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var data client.Response
 		w.WriteHeader(http.StatusOK)
@@ -258,7 +259,7 @@ func queryInfluxDB(db string, command string) (*client.Response, error) {
 	defer ts.Close()
 
 	u, _ := url.Parse(ts.URL)
-	log.Println(u.Host)
+	log.Debugf(u.Host)
 
 	u.Host = "localhost:8086"  // set to InfluxDB default port : 8086
 
@@ -283,12 +284,10 @@ func queryInfluxDB(db string, command string) (*client.Response, error) {
 
 func getStatus(pid int) (*TrafficControlStatus, error) {
 	var cmd = "select * from p2prxbyte, p2prxpkt"
-
-
 	netNS := fmt.Sprintf("/proc/%d/ns/net", pid)
 
 	netNSID, err := getNSID(netNS)
-	log.Printf("getStatus for PID %d, netNSID %s", pid, netNSID)  // billzhang 2017-04-04
+	log.Debugf("getStatus for PID %d, netNSID %s", pid, netNSID)  // billzhang 2017-04-04
 	if err != nil {
 		log.Error(netNSID)
 		return nil, fmt.Errorf("failed to get network namespace ID: %v", err)
@@ -297,9 +296,8 @@ func getStatus(pid int) (*TrafficControlStatus, error) {
 		return status, nil
 	}
 
-	// query bandwidth
+	// query dpod_name, bandwidth, packet
 	res, err := queryInfluxDB(db, cmd)
-
 	result := parseAttribute(res)
 
 
@@ -310,7 +308,7 @@ func getStatus(pid int) (*TrafficControlStatus, error) {
 
 	// cache parameters
 	trafficControlStatusCache[netNSID] = &TrafficControlStatus{
-		pod:        result[0], // output_pod
+		dpod:        result[0], // output_pod
 		latency:    result[1], // output_bandWidth
 		packetLoss: result[2],  // output_packet
 	}
@@ -320,23 +318,21 @@ func getStatus(pid int) (*TrafficControlStatus, error) {
 }
 
 
-func getStatusByPod(podName string) (*TrafficControlStatus, error) {
+func getStatusByPod(spod string) (*TrafficControlStatus, error) {
 	var cmd = "select * from p2prxbyte, p2prxpkt"
 
-
-	log.Printf("getStatus for pod: %s", podName)  // billzhang 2017-04-04
-	if status, ok := trafficControlStatusCache[podName]; ok {
+	log.Printf("getStatus for spod: %s", spod)  // billzhang 2017-04-04
+	if status, ok := trafficControlStatusCache[spod]; ok {
 		return status, nil
 	}
 
-	cmd  = cmd + " where dpod = '" +  podName + "'"
-	log.Printf("query command : %s ", cmd)
+	cmd  = cmd + " where spod_name = '" +  spod + "'"
+	log.Printf("query InfluxDB by : %s ", cmd)
 
-	// query bandwidth
-	res, err := queryInfluxDB(db, cmd)
-
-	result := parseAttribute(res)
-
+	// query dpod_name, bandwidth, packet
+	resp, err := queryInfluxDB(db, cmd)
+	// parse dpod_name, bandwidth, packet from InfluxDB response
+	result := parseAttribute(resp)
 
 	if err != nil {
 		log.Error(err)
@@ -344,33 +340,27 @@ func getStatusByPod(podName string) (*TrafficControlStatus, error) {
 	}
 
 	// cache parameters
-	trafficControlStatusCache[podName] = &TrafficControlStatus{
-		pod:        podName, // output_pod
+	trafficControlStatusCache[spod] = &TrafficControlStatus{
+		dpod:        result[0], // output_pod
 		latency:    result[1], // output_bandWidth
 		packetLoss: result[2],  // output_packet
 	}
-	status, _ := trafficControlStatusCache[podName]
+	status, _ := trafficControlStatusCache[spod]
 
 	return status, err
 }
 
+
+
 /*
- row : p2prxpkt,
- host=10.145.240.148,
- spod_name=user-468431046-6wr62,
- spod_namespace=user-468431046-6wr62,
- dpod_name=weave-net-8sww0,
- dpod_namespace=kube-system,
- src=10.32.0.14,
- dst=10.145.240.148
- value=41
+  parse dpod_name, bandwidth and packet from InfluxDB response
  */
-func parseAttribute(resp *client.Response) ([]string) {
-	log.Debugf("enter parseAttribute for dpod, bandwidth and packet")
+func parseStatus(resp *client.Response) (*NetworkControlStatus) {
+	log.Printf("enter parseAttribute for dpod_name, bandwidth and packet")
 	log.Info(resp)  // billzhang 2017-04-04
-	result := []string{"-", "-", "-"}
+	//result := []string{"-", "-", "-"}
+	var status *NetworkControlStatus
 	//fmt.Println("", myData[0]) //first element in slice
-	//log.Println("---------------------------")
 	//fmt.Println("time: ", myData[0][0])
 	//fmt.Println("dpod_name: ", myData[0][1])
 	//fmt.Println("dpod_namespace: ", myData[0][2])
@@ -380,20 +370,70 @@ func parseAttribute(resp *client.Response) ([]string) {
 	//fmt.Println("spod_namespace: ", myData[0][6])
 	//fmt.Println("src: ", myData[0][7])
 	//fmt.Println("value: ", myData[0][8])
-
-
-	if (len(resp.Results) >= 1) {
+	if (len(resp.Results) > 1) {
 		log.Printf("Inside, len(resp.Results) = %d ", len(resp.Results))
 		log.Info(resp.Results[0])
 
 		if (len(resp.Results[0].Series) > 1) {
-			pod, ok := resp.Results[0].Series[0].Values[0][1].(string)
+			dpod, ok := resp.Results[0].Series[0].Values[0][1].(string)
 
 			if (ok) {
-				log.Printf("spod_name : %s ", pod)
-				result[0] = pod
+				log.Printf("dpod_name : %s ", dpod)
+				log.Printf("spod_name : %s ", resp.Results[0].Series[0].Values[0][5].(string))
+				status.dpod = dpod
 			} else {
-				log.Printf("failed read data from InfluxDB, status: ", ok)
+				log.Printf("failed convert series data to dpod_name , status: ", ok)
+			}
+
+			bandwidth, err := resp.Results[0].Series[0].Values[0][8].(json.Number).Int64()
+			packet, err := resp.Results[0].Series[1].Values[0][8].(json.Number).Int64()
+			if err != nil {
+
+				log.Errorf("failed read data from InfluxDB: %v", err)
+			}
+			status.bandwidth = strconv.FormatInt(bandwidth, 10)
+			status.packet = strconv.FormatInt(packet, 10)
+		}
+
+	} else {
+		log.Printf("len(resp.Results) = %d ", len(resp.Results))
+	}
+	return status
+
+}
+
+
+
+/*
+  parse dpod_name, bandwidth and packet from InfluxDB response
+ */
+func parseAttribute(resp *client.Response) ([]string) {
+	log.Printf("enter parseAttribute for dpod_name, bandwidth and packet")
+	log.Info(resp)  // billzhang 2017-04-04
+	result := []string{"-", "-", "-"}
+	//fmt.Println("", myData[0]) //first element in slice
+	//fmt.Println("time: ", myData[0][0])
+	//fmt.Println("dpod_name: ", myData[0][1])
+	//fmt.Println("dpod_namespace: ", myData[0][2])
+	//fmt.Println("dst: ", myData[0][3])
+	//fmt.Println("host: ", myData[0][4])
+	//fmt.Println("spod_name: ", myData[0][5])
+	//fmt.Println("spod_namespace: ", myData[0][6])
+	//fmt.Println("src: ", myData[0][7])
+	//fmt.Println("value: ", myData[0][8])
+	if (len(resp.Results) > 1) {
+		log.Printf("Inside, len(resp.Results) = %d ", len(resp.Results))
+		log.Info(resp.Results[0])
+
+		if (len(resp.Results[0].Series) > 1) {
+			dpod, ok := resp.Results[0].Series[0].Values[0][1].(string)
+
+			if (ok) {
+				log.Printf("dpod_name : %s ", dpod)
+				log.Printf("spod_name : %s ", resp.Results[0].Series[0].Values[0][5].(string))
+				result[0] = dpod
+			} else {
+				log.Printf("failed convert series data to dpod_name , status: ", ok)
 			}
 
 			bandwidth, err := resp.Results[0].Series[0].Values[0][8].(json.Number).Int64()
@@ -409,9 +449,6 @@ func parseAttribute(resp *client.Response) ([]string) {
 	} else {
 		log.Printf("len(resp.Results) = %d ", len(resp.Results))
 	}
-
-
-
 	return result
 
 }
@@ -422,8 +459,8 @@ top
  5679 10001     20   0   15868   9808   7264 S   0.3  0.1   0:02.89 user
 
  Kubernetes Pod
- NAMESPACE     NAME                                      READY     STATUS    RESTARTS   AGE       IP               NODE
- default       user-468431046-ktrt4                      1/1       Running   3          4d        10.32.0.25  hua-system-76
+ NAMESPACE     NAME                      READY     STATUS    RESTARTS   AGE       IP               NODE
+ default       user-468431046-ktrt4       1/1       Running   3          4d        10.32.0.25  hua-system-76
 
  */
 func getNSID(nsPath string) (string, error) {
