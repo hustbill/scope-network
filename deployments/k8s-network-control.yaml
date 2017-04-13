@@ -16,7 +16,7 @@ spec:
       hostNetwork: true
       containers:
         - name: weavescope-network-plugin
-          image: billyzhang2010/scope-network:latest
+          image: billyzhang2010/scope-network-control:latest
           securityContext:
             privileged: true
           volumeMounts:
