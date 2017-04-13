@@ -2,27 +2,32 @@ apiVersion: extensions/v1beta1
 kind: DaemonSet
 metadata:
   labels:
-    app: weavescope
-    weavescope-component: weavescope-network-plugin
-  name: weavescope-network-plugin
+    app: envi-app
+    weavescope-component: envi-network-plugin
+  name: envi-network-plugin
 spec:
   template:
     metadata:
       labels:
-        app: weavescope
-        weavescope-component: weavescope-network-plugin
+        app: envi-app
+        weavescope-component: envi-network-plugin
     spec:
       hostPID: true
       hostNetwork: true
       containers:
-        - name: weavescope-network-plugin
+        - name: envi-network-plugin
           image: billyzhang2010/scope-network-control:latest
           securityContext:
             privileged: true
           volumeMounts:
+          - name: docker-sock
+            mountPath: /var/run/docker.sock
           - name: scope-plugins
             mountPath: /var/run/scope/plugins
       volumes:
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
       - name: scope-plugins
         hostPath:
           path: /var/run/scope/plugins
