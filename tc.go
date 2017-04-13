@@ -278,13 +278,8 @@ func queryInfluxDB(db string, command string) (*client.Response, error) {
 
 	if err != nil {
 		log.Info(res)
-		<<<<<<< HEAD
 		log.Printf("unexpected error.  expected %v, actual %v", nil, err)
-		=======
-		log.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
 		return nil, err
-		>>>>>>> 9ab1a8d70e1d2b24ce07e5c09bc284a47746954c
-
 	}
 	return res, nil;
 }
@@ -333,7 +328,8 @@ func getStatusByPod(spod string) (*TrafficControlStatus, error) {
 		return status, nil
 	}
 
-	cmd  = cmd + " where spod_name = '" +  spod + "'"
+	 cmd  = cmd + " where dpod_name = '" +  spod + "' " + " order by time desc limit 1"
+	// cmd  = cmd + " order by time desc limit 1"
 	log.Printf("query InfluxDB by : %s ", cmd)
 
 	// query dpod_name, bandwidth, packet
