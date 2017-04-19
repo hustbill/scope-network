@@ -7,7 +7,7 @@
 3. show in line ( packet, flow)
 4. Bibo line using Cytoscape.js
 5. live demo with influxdb
-
+6. Inbound and Outbound Title (node-detail list)
 
 # Others
 

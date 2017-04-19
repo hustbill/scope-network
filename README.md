@@ -28,7 +28,7 @@ To run the Scope Network Control plugin you just need to run the following comma
 docker run --rm -it \
 			 --net=host --pid=host --privileged \
 			 -v /var/run:/var/run \
-			 --name billyzhang2010-scope-network-control billyzhang2010/scope-network-control:latest
+			 --name envi-scope-network-control billyzhang2010/scope-network-control:latest
 ```
 
 ### Kubernetes
