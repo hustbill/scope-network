@@ -61,9 +61,11 @@ type TrafficControlStatus struct {
 
 // TrafficControlStatus keeps track of parameters status
 type NetworkControlStatus struct {
+	spod       string
 	dpod	   string
 	bandwidth  string
 	packet     string
+	latency    string
 }
 
 // String is useful to easily create a string of the traffic control plugin internal status.
@@ -101,6 +103,7 @@ func TrafficControlStatusInit() *TrafficControlStatus {
 
 // TrafficControlStatusCache implements status caching
 var trafficControlStatusCache map[string]*TrafficControlStatus
+var neworkControlStatusCache map[string]*NetworkControlStatus
 
 func main() {
 	// We put the socket in a sub-directory to have more control on the permissions
@@ -120,7 +123,7 @@ func main() {
 	}
 
 	// Cache
-	trafficControlStatusCache = make(map[string]*TrafficControlStatus)
+	neworkControlStatusCache = make(map[string]*NetworkControlStatus)
 
 	trafficControlServeMux := http.NewServeMux()
 

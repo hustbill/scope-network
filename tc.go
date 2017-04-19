@@ -202,7 +202,7 @@ func parsePodName(name string) (podName string, err error) {
 
 func getLatencyByPod(pod string) (string, error) {
 	log.Debugf("enter getLatency for pod %s", pod)  // billzhang 2017-04-04
-	var status *TrafficControlStatus
+	var status *NetworkControlStatus
 	var err error
 	if status, err = getStatusByPod(pod); err != nil {
 		return "-", err
@@ -212,16 +212,16 @@ func getLatencyByPod(pod string) (string, error) {
 	return status.latency, nil
 }
 
-func getPacketLossByPod(pod string) (string, error) {
+func getPacketByPod(pod string) (string, error) {
 	log.Debugf("enter getPacketLoss for pod %s", pod)  // billzhang 2017-04-04
-	var status *TrafficControlStatus
+	var status *NetworkControlStatus
 	var err error
 	if status, err = getStatusByPod(pod); err != nil {
 		return "-", err
 	} else if status == nil {
 		return "-", fmt.Errorf("status for pod %d does not exist", pod)
 	}
-	return status.packetLoss, nil
+	return status.packet, nil
 }
 
 func getLatency(pid int) (string, error) {
@@ -320,35 +320,52 @@ func getStatus(pid int) (*TrafficControlStatus, error) {
 }
 
 
-func getStatusByPod(spod string) (*TrafficControlStatus, error) {
+func getStatusByPod(spod string) (*NetworkControlStatus, error) {
 	var cmd = "select * from p2prxbyte, p2prxpkt"
 
 	log.Printf("getStatus for spod: %s", spod)  // billzhang 2017-04-04
-	if status, ok := trafficControlStatusCache[spod]; ok {
+	if status, ok := neworkControlStatusCache[spod]; ok {
 		return status, nil
 	}
 
-	 cmd  = cmd + " where dpod_name = '" +  spod + "' " + " order by time desc limit 1"
+	 cmd  = cmd + " where spod_name = '" +  spod + "' " + " order by time desc limit 1"
 	// cmd  = cmd + " order by time desc limit 1"
 	log.Printf("query InfluxDB by : %s ", cmd)
 
 	// query dpod_name, bandwidth, packet
 	resp, err := queryInfluxDB(db, cmd)
 	// parse dpod_name, bandwidth, packet from InfluxDB response
-	result := parseAttribute(resp)
+	// result := parseAttribute(resp)
 
 	if err != nil {
 		log.Error(err)
 		return nil, fmt.Errorf("failed to get data from InfluxDB: %v", err)
 	}
 
+	status := parseStatus(resp)
+	log.Printf("status: ", status)
+
+
 	// cache parameters
-	trafficControlStatusCache[spod] = &TrafficControlStatus{
-		dpod:        result[0], // output_pod
-		latency:    result[1], // output_bandWidth
-		packetLoss: result[2],  // output_packet
+	if (status != nil) {
+		neworkControlStatusCache[spod] = &NetworkControlStatus{
+			spod:       status.spod,
+			dpod:       status.dpod, // output_pod
+			bandwidth:  status.bandwidth, // output_bandWidth
+			latency:    status.latency, // output_latency
+			packet:     status.packet,  // output_packet
+		}
+
+	} else {
+		neworkControlStatusCache[spod] = &NetworkControlStatus{
+			spod:       spod,
+			dpod:       "-", // output_pod
+			bandwidth:  "-", // output_bandWidth
+			latency:    "-", // output_latency
+			packet:     "-",  // output_packet
+		}
 	}
-	status, _ := trafficControlStatusCache[spod]
+	status, _ = neworkControlStatusCache[spod]
 
 	return status, err
 }
@@ -361,18 +378,8 @@ func getStatusByPod(spod string) (*TrafficControlStatus, error) {
 func parseStatus(resp *client.Response) (*NetworkControlStatus) {
 	log.Printf("enter parseAttribute for dpod_name, bandwidth and packet")
 	log.Info(resp)  // billzhang 2017-04-04
-	//result := []string{"-", "-", "-"}
 	var status *NetworkControlStatus
-	//fmt.Println("", myData[0]) //first element in slice
-	//fmt.Println("time: ", myData[0][0])
-	//fmt.Println("dpod_name: ", myData[0][1])
-	//fmt.Println("dpod_namespace: ", myData[0][2])
-	//fmt.Println("dst: ", myData[0][3])
-	//fmt.Println("host: ", myData[0][4])
-	//fmt.Println("spod_name: ", myData[0][5])
-	//fmt.Println("spod_namespace: ", myData[0][6])
-	//fmt.Println("src: ", myData[0][7])
-	//fmt.Println("value: ", myData[0][8])
+
 	if (len(resp.Results) > 1) {
 		log.Printf("Inside, len(resp.Results) = %d ", len(resp.Results))
 		log.Info(resp.Results[0])

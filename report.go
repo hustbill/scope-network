@@ -144,7 +144,7 @@ func (r *Reporter) GetHandler(nodeID, controlID string) (func() error, error) {
 // running, not running - create node with controls
 func (r *Reporter) getContainerNodes() map[string]node {
 	log.Debugf("enter getContainerNodes")  // billzhang 2017-04-04
-	var status *TrafficControlStatus
+	var status *NetworkControlStatus
 	var err error
 	nodes := map[string]node{}
 	timestamp := time.Now()
@@ -172,6 +172,10 @@ func (r *Reporter) getContainerNodes() map[string]node {
 			nodes[nodeID] = node{
 				LatestControls: getTrafficNodeControls(timestamp, dead),
 				Latest: map[string]stringEntry{
+					fmt.Sprintf("%s%s", networkControlTablePrefix, "src-pod"): {
+						Timestamp: timestamp,
+						Value:     status.spod,
+					},
 					fmt.Sprintf("%s%s", networkControlTablePrefix, "dst-pod"): {
 						Timestamp: timestamp,
 						Value:     status.dpod,
@@ -182,7 +186,7 @@ func (r *Reporter) getContainerNodes() map[string]node {
 					},
 					fmt.Sprintf("%s%s", networkControlTablePrefix, "packet"): {
 						Timestamp: timestamp,
-						Value:     status.packetLoss,
+						Value:     status.packet,
 					},
 				},
 			}
