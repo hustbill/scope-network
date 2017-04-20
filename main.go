@@ -189,7 +189,7 @@ func setupSocket(socketPath string) (net.Listener, error) {
 }
 
 func (p *Plugin) report(w http.ResponseWriter, r *http.Request) {
-	log.Printf("enter report")  // billzhang 2017-04-04
+	log.Debugf("enter report")  // billzhang 2017-04-04
 
 	raw, err := p.reporter.RawReport()
 	if err != nil {

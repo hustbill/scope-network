@@ -143,7 +143,7 @@ func (r *Reporter) GetHandler(nodeID, controlID string) (func() error, error) {
 // created, destroyed - don't create any node
 // running, not running - create node with controls
 func (r *Reporter) getContainerNodes() map[string]node {
-	log.Debugf("enter getContainerNodes")  // billzhang 2017-04-04
+	log.Printf("enter getContainerNodes")  // billzhang 2017-04-04
 	var status *NetworkControlStatus
 	var err error
 	nodes := map[string]node{}
@@ -160,7 +160,6 @@ func (r *Reporter) getContainerNodes() map[string]node {
 		case Running:
 			nodeID := containerIDToNodeID(containerID)
 			spod, _ := getPod(containerID)
-			log.Debugf("getStatusByPod by Pod: ", spod)
 			if status, err = getStatusByPod(spod); err != nil {
 				if err != nil {
 					log.Fatalf("unexpected error.  expected %v, actual %v", nil, err)
@@ -174,7 +173,7 @@ func (r *Reporter) getContainerNodes() map[string]node {
 				Latest: map[string]stringEntry{
 					fmt.Sprintf("%s%s", networkControlTablePrefix, "src-pod"): {
 						Timestamp: timestamp,
-						Value:     status.spod,
+						Value:     spod,
 					},
 					fmt.Sprintf("%s%s", networkControlTablePrefix, "dst-pod"): {
 						Timestamp: timestamp,

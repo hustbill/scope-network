@@ -159,7 +159,7 @@ func getPod(containerID string) (string, error) {
 		fmt.Errorf("failed to ParseDockerName: %v", err)
 	}
 
-	log.Printf("pod is %s", pod)
+	log.Debugf("pod is %s", pod)
 	return pod, nil
 }
 
@@ -323,7 +323,7 @@ func getStatus(pid int) (*TrafficControlStatus, error) {
 func getStatusByPod(spod string) (*NetworkControlStatus, error) {
 	var cmd = "select * from p2prxbyte, p2prxpkt"
 
-	log.Printf("getStatus for spod: %s", spod)  // billzhang 2017-04-04
+	log.Printf("getStatusByPod for spod: %s", spod)  // billzhang 2017-04-04
 	if status, ok := neworkControlStatusCache[spod]; ok {
 		return status, nil
 	}
@@ -376,7 +376,7 @@ func getStatusByPod(spod string) (*NetworkControlStatus, error) {
   parse dpod_name, bandwidth and packet from InfluxDB response
  */
 func parseStatus(resp *client.Response) (*NetworkControlStatus) {
-	log.Printf("enter parseAttribute for dpod_name, bandwidth and packet")
+	log.Printf("enter parseStatus for dpod_name, bandwidth and packet")
 	log.Info(resp)  // billzhang 2017-04-04
 	var status *NetworkControlStatus
 
