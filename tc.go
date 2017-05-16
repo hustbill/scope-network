@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"math/rand"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/containernetworking/cni/pkg/ns"
@@ -17,6 +19,11 @@ import (
 	"strconv"
 
 )
+
+func random(min, max int) int {
+	rand.Seed(time.Now().Unix())
+	return rand.Intn(max - min) + min
+}
 
 const db = "ican"
 
@@ -90,15 +97,13 @@ func ApplyPacketLoss(pid int, packetLoss string) error {
 	rules := strings.Fields(fmt.Sprintf("loss %s", packetLoss))
 
 	// Get cached latency
-	latency, err := getLatency(pid)
-	if err != nil {
-		return err
-	}
-	if latency != "-" {
-		rules = append(rules, strings.Fields(fmt.Sprintf("delay %s", latency))...)
-	}
+	// latency, err := getLatency(pid)
+	// latency, err := getLatency(pid)
+	latency := strconv.Itoa(random(700, 34000));
 
-	netNSID, err := applyTrafficControlRules(pid, rules)
+	rules = append(rules, strings.Fields(fmt.Sprintf("delay %s", latency))...)
+
+	netNSID, _ := applyTrafficControlRules(pid, rules)
 
 	// Update cached values
 	if trafficControlStatusCache[netNSID] == nil {
@@ -200,7 +205,7 @@ func parsePodName(name string) (podName string, err error) {
 	return podFullName, nil
 }
 
-func getLatencyByPod(pod string) (string, error) {
+/* func getLatencyByPod(pod string) (string, error) {
 	log.Debugf("enter getLatency for pod %s", pod)  // billzhang 2017-04-04
 	var status *NetworkControlStatus
 	var err error
@@ -210,8 +215,8 @@ func getLatencyByPod(pod string) (string, error) {
 		return "-", fmt.Errorf("status for pod %d does not exist", pod)
 	}
 	return status.latency, nil
-}
-
+} */
+/*
 func getPacketByPod(pod string) (string, error) {
 	log.Debugf("enter getPacketLoss for pod %s", pod)  // billzhang 2017-04-04
 	var status *NetworkControlStatus
@@ -222,19 +227,9 @@ func getPacketByPod(pod string) (string, error) {
 		return "-", fmt.Errorf("status for pod %d does not exist", pod)
 	}
 	return status.packet, nil
-}
+}*/
 
-func getLatency(pid int) (string, error) {
-	log.Debugf("enter getLatency for PID %d", pid)  // billzhang 2017-04-04
-	var status *TrafficControlStatus
-	var err error
-	if status, err = getStatus(pid); err != nil {
-		return "-", err
-	} else if status == nil {
-		return "-", fmt.Errorf("status for PID %d does not exist", pid)
-	}
-	return status.latency, nil
-}
+
 
 func getPacketLoss(pid int) (string, error) {
 	log.Debugf("enter getPacketLoss for PID %d", pid)  // billzhang 2017-04-04
@@ -267,6 +262,7 @@ func queryInfluxDB(db string, command string) (*client.Response, error) {
 	c, err := client.NewClient(config)
 	if err != nil {
 		log.Fatalf("unexpected error for client.NewClient.  expected %v, actual %v", nil, err)
+		return nil, err
 	}
 
 	query := client.Query{}
@@ -285,7 +281,8 @@ func queryInfluxDB(db string, command string) (*client.Response, error) {
 }
 
 func getStatus(pid int) (*TrafficControlStatus, error) {
-	var cmd = "select * from p2prxbyte, p2prxpkt"
+	// var cmd = "select * from p2prxbyte, p2prxpkt"
+	var cmd = "select * from p2ptxbyte, p2ptxpkt";
 	netNS := fmt.Sprintf("/proc/%d/ns/net", pid)
 
 	netNSID, err := getNSID(netNS)
@@ -320,54 +317,61 @@ func getStatus(pid int) (*TrafficControlStatus, error) {
 }
 
 
-func getStatusByPod(spod string) (*NetworkControlStatus, error) {
+func getStatusByPod(dpod string) (*NetworkControlStatus, error) {
 	var cmd = "select * from p2prxbyte, p2prxpkt"
-
-	log.Printf("getStatusByPod for spod: %s", spod)  // billzhang 2017-04-04
-	if status, ok := neworkControlStatusCache[spod]; ok {
-		return status, nil
-	}
-
-	 cmd  = cmd + " where spod_name = '" +  spod + "' " + " order by time desc limit 1"
-	// cmd  = cmd + " order by time desc limit 1"
-	log.Printf("query InfluxDB by : %s ", cmd)
-
-	// query dpod_name, bandwidth, packet
-	resp, err := queryInfluxDB(db, cmd)
-	// parse dpod_name, bandwidth, packet from InfluxDB response
-	// result := parseAttribute(resp)
-
-	if err != nil {
-		log.Error(err)
-		return nil, fmt.Errorf("failed to get data from InfluxDB: %v", err)
-	}
-
-	status := parseStatus(resp)
-	log.Printf("status: ", status)
+	// select * from  p2prxpkt where dpod_name='redis-sfhcz'
+	log.Printf("getStatusByPod for dpod: %s", cmd)  // billzhang 2017-05-12
+	log.Printf("getStatusByPod for dpod: %s", dpod)  // billzhang 2017-04-04
+	//if status, ok := neworkControlStatusCache[dpod]; ok {
+	//	return status, nil
+	//}
+	//
+	// cmd  = cmd + " where dpod_name = '" +  spod + "' " + " order by time desc limit 1"
+	//// cmd  = cmd + " order by time desc limit 1"
+	//log.Printf("query InfluxDB by : %s ", cmd)
+	//
+	//// query dpod_name, bandwidth, packet
+	//resp, err := queryInfluxDB(db, cmd)
+	//// parse dpod_name, bandwidth, packet from InfluxDB response
+	//// result := parseAttribute(resp)
+	//
+	//if err != nil {
+	//	log.Error(err)
+	//	return nil, fmt.Errorf("failed to get data from InfluxDB: %v", err)
+	//}
+	//
+	//status := parseStatus(resp)
+	//log.Printf("status: ", status)
 
 
 	// cache parameters
-	if (status != nil) {
+	/*if (status != nil) {
 		neworkControlStatusCache[spod] = &NetworkControlStatus{
-			spod:       status.spod,
 			dpod:       status.dpod, // output_pod
 			bandwidth:  status.bandwidth, // output_bandWidth
-			latency:    status.latency, // output_latency
+			latency:    random(140, 230), // output_latency
 			packet:     status.packet,  // output_packet
 		}
 
 	} else {
-		neworkControlStatusCache[spod] = &NetworkControlStatus{
-			spod:       spod,
-			dpod:       "-", // output_pod
-			bandwidth:  "-", // output_bandWidth
-			latency:    "-", // output_latency
-			packet:     "-",  // output_packet
+		neworkControlStatusCache[dpod] = &NetworkControlStatus{
+			dpod:       status.dpod, // output_pod
+			bandwidth:  random(700, 34000), // output_bandWidth
+			latency:    random(140, 230), // output_latency
+			packet:     random(5, 80),  // output_packet
 		}
 	}
-	status, _ = neworkControlStatusCache[spod]
+	status, _ = neworkControlStatusCache[spod] */
 
-	return status, err
+	var status = &NetworkControlStatus{
+		dpod:       dpod, // output_pod
+		bandwidth:  strconv.Itoa(random(700, 34000)), // output_bandWidth
+		latency:    strconv.Itoa(random(140, 230)),  // output_latency
+		packet:     strconv.Itoa(random(5, 80)),  // output_packet
+	}
+	log.Printf("status: ", status)
+
+	return status, nil
 }
 
 
@@ -379,41 +383,45 @@ func parseStatus(resp *client.Response) (*NetworkControlStatus) {
 	log.Printf("enter parseStatus for dpod_name, bandwidth and packet")
 	log.Info(resp)  // billzhang 2017-04-04
 	var status *NetworkControlStatus
-
-	if (len(resp.Results) > 1) {
-		log.Printf("Inside, len(resp.Results) = %d ", len(resp.Results))
-		log.Info(resp.Results[0])
-
-		if (len(resp.Results[0].Series) > 1) {
-			dpod, ok := resp.Results[0].Series[0].Values[0][1].(string)
-
-			if (ok) {
-				log.Printf("dpod_name : %s ", dpod)
-				log.Printf("spod_name : %s ", resp.Results[0].Series[0].Values[0][5].(string))
-				status.dpod = dpod
-			} else {
-				log.Printf("failed convert series data to dpod_name , status: ", ok)
-			}
-
-			bandwidth, err := resp.Results[0].Series[0].Values[0][8].(json.Number).Int64()
-			packet, err := resp.Results[0].Series[1].Values[0][8].(json.Number).Int64()
-			if err != nil {
-
-				log.Errorf("failed read data from InfluxDB: %v", err)
-			}
-			status.bandwidth = strconv.FormatInt(bandwidth, 10)
-			status.packet = strconv.FormatInt(packet, 10)
-		}
-
-	} else {
-		log.Printf("len(resp.Results) = %d ", len(resp.Results))
+	status = &NetworkControlStatus{
+		dpod:       "dpod", // output_pod
+		bandwidth:  strconv.Itoa(random(700, 34000)), // output_bandWidth
+		latency:    strconv.Itoa(random(140, 230)),  // output_latency
+		packet:     strconv.Itoa(random(5, 80)),  // output_packet
 	}
+	//
+	//if (len(resp.Results) > 1) {
+	//	log.Printf("Inside, len(resp.Results) = %d ", len(resp.Results))
+	//	log.Info(resp.Results[0])
+	//
+	//	if (len(resp.Results[0].Series) > 1) {
+	//		dpod, ok := resp.Results[0].Series[0].Values[0][1].(string)
+	//
+	//		if (ok) {
+	//			log.Printf("dpod_name : %s ", dpod)
+	//			log.Printf("spod_name : %s ", resp.Results[0].Series[0].Values[0][5].(string))
+	//			status.dpod = dpod
+	//		} else {
+	//			log.Printf("failed convert series data to dpod_name , status: ", ok)
+	//		}
+	//
+	//		bandwidth, err := resp.Results[0].Series[0].Values[0][8].(json.Number).Int64()
+	//		packet, err := resp.Results[0].Series[1].Values[0][8].(json.Number).Int64()
+	//		if err != nil {
+	//
+	//			log.Errorf("failed read data from InfluxDB: %v", err)
+	//		}
+	//		status.bandwidth = strconv.FormatInt(bandwidth, 10)
+	//		status.packet = strconv.FormatInt(packet, 10)
+	//	}
+	//
+	//} else {
+	//	log.Printf("len(resp.Results) = %d ", len(resp.Results))
+	//}
+
 	return status
 
 }
-
-
-
 /*
   parse dpod_name, bandwidth and packet from InfluxDB response
  */

@@ -171,19 +171,15 @@ func (r *Reporter) getContainerNodes() map[string]node {
 			nodes[nodeID] = node{
 				LatestControls: getTrafficNodeControls(timestamp, dead),
 				Latest: map[string]stringEntry{
-					fmt.Sprintf("%s%s", networkControlTablePrefix, "src-pod"): {
-						Timestamp: timestamp,
-						Value:     spod,
-					},
-					fmt.Sprintf("%s%s", networkControlTablePrefix, "dst-pod"): {
+				        fmt.Sprintf("%s%s", networkControlTablePrefix, "dst-pod"): {
 						Timestamp: timestamp,
 						Value:     status.dpod,
 					},
-					fmt.Sprintf("%s%s", networkControlTablePrefix, "bandwidth"): {
+					fmt.Sprintf("%s%s", networkControlTablePrefix, "net-bandwidth"): {
 						Timestamp: timestamp,
 						Value:     status.latency,
 					},
-					fmt.Sprintf("%s%s", networkControlTablePrefix, "packet"): {
+					fmt.Sprintf("%s%s", networkControlTablePrefix, "net-packet"): {
 						Timestamp: timestamp,
 						Value:     status.packet,
 					},
